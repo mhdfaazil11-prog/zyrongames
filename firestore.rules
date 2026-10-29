@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: default-deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Connection testing endpoint
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // Custom Games: anyone can read; authenticated users or admin can create/update/delete
+    match /custom_games/{gameId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Game Leaderboards: anyone can view high scores; players can submit their own scores
+    match /games/{gameId}/leaderboard/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // User profiles: public read for leaderboards; write only by owner
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+  }
+}

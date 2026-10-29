@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { collection, doc, getDocs, setDoc, query, orderBy, limit as firestoreLimit } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from './firebase.ts';
+
 export interface LeaderboardEntry {
   gameId: string;
   userId: string;
@@ -12,7 +15,6 @@ export interface LeaderboardEntry {
   submittedAt: string;
 }
 
-// Realistic initial community high scores for each game
 const SEED_PLAYERS = [
   { name: 'Valkyrie99', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Valkyrie' },
   { name: 'CyberDrifter', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=CyberDrift' },
@@ -72,30 +74,38 @@ function getSeedLeaderboard(gameId: string): LeaderboardEntry[] {
   })).sort((a, b) => b.score - a.score);
 }
 
-const STORAGE_KEY_PREFIX = 'zorvyq_lb_';
+const STORAGE_KEY_PREFIX = 'zyron_lb_';
 
-export async function fetchGameLeaderboard(gameId: string, limit = 15): Promise<LeaderboardEntry[]> {
-  // Check localStorage first
-  let entries: LeaderboardEntry[] = [];
+export async function fetchGameLeaderboard(gameId: string, limitCount = 15): Promise<LeaderboardEntry[]> {
+  const path = `games/${gameId}/leaderboard`;
+  let cloudEntries: LeaderboardEntry[] = [];
+
+  try {
+    const q = query(collection(db, path), orderBy('score', 'desc'), firestoreLimit(limitCount));
+    const snapshot = await getDocs(q);
+    snapshot.forEach((docSnap) => {
+      cloudEntries.push(docSnap.data() as LeaderboardEntry);
+    });
+  } catch (err) {
+    console.warn(`Firestore read warning for ${path}:`, err);
+  }
+
+  // Local storage fallback
+  let localEntries: LeaderboardEntry[] = [];
   try {
     const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${gameId}`);
-    if (raw) {
-      entries = JSON.parse(raw);
-    }
-  } catch (err) {
-    console.warn('Could not read leaderboard from storage:', err);
-  }
+    if (raw) localEntries = JSON.parse(raw);
+  } catch {}
 
-  if (!entries || entries.length === 0) {
-    entries = getSeedLeaderboard(gameId);
-    try {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}${gameId}`, JSON.stringify(entries));
-    } catch {}
-  }
+  const seed = getSeedLeaderboard(gameId);
+  const combinedMap = new Map<string, LeaderboardEntry>();
 
-  // Sort descending
-  entries.sort((a, b) => b.score - a.score);
-  return entries.slice(0, limit);
+  seed.forEach((e) => combinedMap.set(e.userId, e));
+  localEntries.forEach((e) => combinedMap.set(e.userId, e));
+  cloudEntries.forEach((e) => combinedMap.set(e.userId, e));
+
+  const finalEntries = Array.from(combinedMap.values()).sort((a, b) => b.score - a.score);
+  return finalEntries.slice(0, limitCount);
 }
 
 export async function submitGameScore(
@@ -105,43 +115,41 @@ export async function submitGameScore(
 ): Promise<boolean> {
   if (!user || !user.uid || score <= 0) return false;
 
+  const now = new Date().toISOString();
+  const entry: LeaderboardEntry = {
+    gameId,
+    userId: user.uid,
+    displayName: user.displayName || 'Gamer',
+    photoURL: user.photoURL || '',
+    score: Math.floor(score),
+    submittedAt: now,
+  };
+
+  // 1. Submit to Firestore
+  const path = `games/${gameId}/leaderboard`;
+  try {
+    await setDoc(doc(db, path, user.uid), entry, { merge: true });
+  } catch (err) {
+    console.warn(`Could not save score to Firestore ${path}:`, err);
+  }
+
+  // 2. Save to localStorage
   try {
     const entries = await fetchGameLeaderboard(gameId, 50);
     const existingIndex = entries.findIndex((e) => e.userId === user.uid);
-    const now = new Date().toISOString();
-
     if (existingIndex >= 0) {
-      if (score <= entries[existingIndex].score) {
-        return false; // Not a higher score
-      }
-      entries[existingIndex].score = Math.floor(score);
-      entries[existingIndex].displayName = user.displayName || 'Anonymous Gamer';
-      entries[existingIndex].photoURL = user.photoURL || '';
-      entries[existingIndex].submittedAt = now;
+      if (score <= entries[existingIndex].score) return false;
+      entries[existingIndex] = entry;
     } else {
-      entries.push({
-        gameId,
-        userId: user.uid,
-        displayName: user.displayName || 'Anonymous Gamer',
-        photoURL: user.photoURL || '',
-        score: Math.floor(score),
-        submittedAt: now,
-      });
+      entries.push(entry);
     }
-
     entries.sort((a, b) => b.score - a.score);
     localStorage.setItem(`${STORAGE_KEY_PREFIX}${gameId}`, JSON.stringify(entries));
 
-    // Also update user's best scores in localStorage
-    try {
-      const bestScores = JSON.parse(localStorage.getItem('best') || '{}');
-      bestScores[gameId] = Math.max(bestScores[gameId] || 0, Math.floor(score));
-      localStorage.setItem('best', JSON.stringify(bestScores));
-    } catch {}
+    const bestScores = JSON.parse(localStorage.getItem('best') || '{}');
+    bestScores[gameId] = Math.max(bestScores[gameId] || 0, Math.floor(score));
+    localStorage.setItem('best', JSON.stringify(bestScores));
+  } catch {}
 
-    return true;
-  } catch (err) {
-    console.error('Error submitting score to leaderboard:', err);
-    return false;
-  }
+  return true;
 }

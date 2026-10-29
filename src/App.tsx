@@ -7,6 +7,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { GAMES, GameItem } from './gamesData.ts';
 import { useAuth, AuthProvider, ZorvyqUser } from './AuthContext.tsx';
 import { fetchGameLeaderboard, submitGameScore, LeaderboardEntry } from './leaderboardService.ts';
+import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
+import { db } from './firebase.ts';
 import {
   Trophy,
   User,
@@ -73,9 +75,16 @@ function ZorvyqApp() {
               category: Array.isArray(cg.cats) ? cg.cats.join(' ') : 'Adventure',
               icon: cg.e || '🎮',
               color: 'from-blue-600 to-indigo-950',
-              desc: cg.d || 'Custom created game on Zorvyq',
+              desc: cg.d || 'Custom created game on ZYRON',
             }));
           setCustomGames(formatted);
+
+          // Sync to Firestore collection
+          data.customGames.forEach((cg: any) => {
+            if (cg.id) {
+              setDoc(doc(db, 'custom_games', String(cg.id)), cg, { merge: true }).catch(() => {});
+            }
+          });
         }
       }
     } catch (err) {
@@ -86,6 +95,40 @@ function ZorvyqApp() {
   useEffect(() => {
     loadSharedGames();
   }, [loadSharedGames]);
+
+  // Real-time Firestore sync for custom games
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(
+        collection(db, 'custom_games'),
+        (snapshot) => {
+          const games: GameItem[] = [];
+          snapshot.forEach((d) => {
+            const data = d.data();
+            if (data && data.pub !== false) {
+              games.push({
+                id: `c_${data.id || d.id}`,
+                title: data.t || 'Untitled Game',
+                category: Array.isArray(data.cats) ? data.cats.join(' ') : 'Adventure',
+                icon: data.e || '🎮',
+                color: 'from-blue-600 to-indigo-950',
+                desc: data.d || 'Custom created game on ZYRON',
+              });
+            }
+          });
+          if (games.length > 0) {
+            setCustomGames(games);
+          }
+        },
+        (err) => {
+          console.warn('Firestore custom_games listener warning:', err);
+        }
+      );
+      return () => unsub();
+    } catch (err) {
+      console.warn('Failed to attach Firestore listener:', err);
+    }
+  }, []);
 
 
 

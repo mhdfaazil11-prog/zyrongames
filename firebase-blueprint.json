@@ -1,0 +1,178 @@
+{
+  "entities": {
+    "CustomGame": {
+      "title": "CustomGame",
+      "description": "A user-created or admin-created game available across all devices",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique game ID identifier"
+        },
+        "kind": {
+          "type": "string",
+          "description": "Game type: builder, url, or code"
+        },
+        "arch": {
+          "type": "string",
+          "description": "Game engine archetype"
+        },
+        "t": {
+          "type": "string",
+          "description": "Game title"
+        },
+        "e": {
+          "type": "string",
+          "description": "Game emoji icon"
+        },
+        "d": {
+          "type": "string",
+          "description": "Game description"
+        },
+        "url": {
+          "type": "string",
+          "description": "Optional embed URL"
+        },
+        "code": {
+          "type": "string",
+          "description": "Optional custom game JavaScript code"
+        },
+        "ctl": {
+          "type": "string",
+          "description": "Controls instructions"
+        },
+        "pChar": {
+          "type": "string",
+          "description": "Player character sprite"
+        },
+        "pSpd": {
+          "type": "number",
+          "description": "Player movement speed"
+        },
+        "iChar": {
+          "type": "string",
+          "description": "Collectible item sprite"
+        },
+        "iCount": {
+          "type": "number",
+          "description": "Collectible item count"
+        },
+        "iVal": {
+          "type": "number",
+          "description": "Collectible item score value"
+        },
+        "eChar": {
+          "type": "string",
+          "description": "Enemy sprite"
+        },
+        "eCount": {
+          "type": "number",
+          "description": "Enemy count"
+        },
+        "eSpd": {
+          "type": "number",
+          "description": "Enemy movement speed"
+        },
+        "timeGoal": {
+          "type": "number",
+          "description": "Time limit in seconds"
+        },
+        "cats": {
+          "type": "array",
+          "description": "Game genres and categories"
+        },
+        "col": {
+          "type": "string",
+          "description": "Gradient theme colors"
+        },
+        "feat": {
+          "type": "boolean",
+          "description": "Whether game is featured"
+        },
+        "pub": {
+          "type": "boolean",
+          "description": "Whether game is published and visible"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["id", "t"]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "High score entry for a game",
+      "type": "object",
+      "properties": {
+        "gameId": {
+          "type": "string",
+          "description": "The ID of the game"
+        },
+        "userId": {
+          "type": "string",
+          "description": "The UID of the player"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the player"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Avatar photo URL"
+        },
+        "score": {
+          "type": "number",
+          "description": "High score value"
+        },
+        "submittedAt": {
+          "type": "string",
+          "description": "Timestamp when score was achieved"
+        }
+      },
+      "required": ["gameId", "userId", "score"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Player profile information",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "User UID"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "User avatar URL"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "description": "Timestamp of last login"
+        }
+      },
+      "required": ["uid"]
+    }
+  },
+  "firestore": {
+    "/custom_games/{gameId}": {
+      "schema": "CustomGame",
+      "description": "Custom games created in ZYRON Studio"
+    },
+    "/games/{gameId}/leaderboard/{userId}": {
+      "schema": "LeaderboardEntry",
+      "description": "High scores for each game"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Public player profiles"
+    }
+  }
+}
