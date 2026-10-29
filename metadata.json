@@ -1,0 +1,6 @@
+{
+  "name": "Zorvyq",
+  "description": "ZORVYQ - PLAY BEYOND LIMITS. Play 32+ original instant browser games with adventure quests, 3D highway racing, dungeon crawlers, survival shooting, and in-app game creation tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

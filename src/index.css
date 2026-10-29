@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #070c1d;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #1b2a55;
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #2f7bff;
+  }
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #05070f;
+  color: #e8eeff;
+  overflow: hidden;
+  user-select: none;
+}
